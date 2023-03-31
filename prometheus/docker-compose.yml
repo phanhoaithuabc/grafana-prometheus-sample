@@ -1,0 +1,63 @@
+version: '3'
+
+volumes:
+  prometheus-data:
+    driver: local
+  node_exporter-data:
+    driver: local
+  cadvisor-data:
+    driver: local
+
+services:
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - /etc/prometheus:/etc/prometheus # linux
+      # - C://etc//prometheus:/etc/prometheus # windows
+      - prometheus-data:/prometheus
+    restart: unless-stopped
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+  
+  node_exporter:
+    image: quay.io/prometheus/node-exporter:latest
+    container_name: node_exporter
+    command:
+      - '--path.rootfs=/host'
+    pid: host
+    restart: unless-stopped
+    volumes:
+      - 'node_exporter-data:/host:ro,rslave'
+  
+  cadvisor:
+    # TODO: latest tag is not updated, check latest release https://github.com/google/cadvisor/releases 
+    image: gcr.io/cadvisor/cadvisor:v0.45.0     
+    container_name: cadvisor
+    ports:
+      - "8080:8080"
+    network_mode: host
+    volumes:
+      # - cadvisor-data:/rootfs:ro                               # Windows
+      # - C://cadvisor-data/var/run:/var/run:ro                  # Windows
+      # - C://cadvisor-data/sys:/sys:ro                          # Windows
+      # - C://cadvisor-data/var/lib/docker/:/var/lib/docker:ro   # Windows
+      # - C://cadvisor-data/dev/disk/:/dev/disk:ro               # Windows
+      # - /:/rootfs:ro                        # Linux
+      # - /var/run:/var/run:ro                # Linux
+      # - /sys:/sys:ro                        # Linux
+      # - /var/lib/docker/:/var/lib/docker:ro # Linux
+      # - /dev/disk/:/dev/disk:ro             # Linux
+      
+      - /:/rootfs:ro
+      - /var/run/:/var/run/:rw
+      - /sys:/sys:ro
+      - /mnt/windows_docker/:/rootfs/var/lib/docker:ro
+      - /dev/disk/:/dev/disk:ro
+    devices:
+      # - cadvisor-data/dev/kmsg
+      - /dev/kmsg
+    restart: unless-stopped
+    privileged: true
